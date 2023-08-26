@@ -28,8 +28,17 @@ func SendTweet(from string, to []string, tweet *twitterscraper.TweetResult) {
 	}
 }
 
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <twitter handle>\n\n", os.Args[0])
+}
+
 func main() {
-	twitter_username := os.Args[1]
+	if len(os.Args[1:]) != 1 {
+		usage()
+		os.Exit(1)
+	}
+
+	twitterHandle := os.Args[1]
 
 	dirname, err := os.UserHomeDir()
 	if err != nil {
@@ -93,7 +102,7 @@ func main() {
 		}
 	}
 
-	for tweet := range scraper.GetTweets(context.Background(), twitter_username, 10) {
+	for tweet := range scraper.GetTweets(context.Background(), twitterHandle, 10) {
 		if tweet.Error != nil {
 			panic(tweet.Error)
 		}
