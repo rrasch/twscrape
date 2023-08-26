@@ -20,7 +20,7 @@ func SendTweet(from string, to []string, tweet *twitterscraper.TweetResult) {
 
 	smtpServer := "localhost:25"
 
-	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", strings.Join(to, ", "), subject, message)
+	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s", strings.Join(to, ", "), subject, message)
 
 	err := smtp.SendMail(smtpServer, nil, from, to, []byte(body))
 	if err != nil {
