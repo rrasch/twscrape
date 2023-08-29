@@ -12,7 +12,7 @@ $(BINARY_NAME): $(BINARY_NAME).go
 run: $(BINARY_NAME)
 	./$(BINARY_NAME) $(TWITTER_HANDLE)
 
-install: $(BINARY_NAME).go
+install: $(BINARY_NAME)
 	install -m 0755 $(BINARY_NAME) $(INSTALL_DIR)
 
 clean:

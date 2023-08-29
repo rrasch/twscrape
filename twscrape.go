@@ -4,25 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	twitterscraper "github.com/n0madic/twitter-scraper"
-	toml "github.com/pelletier/go-toml"
-	"github.com/syndtr/goleveldb/leveldb"
+	"html"
 	"net/http"
 	"net/smtp"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	twitterscraper "github.com/n0madic/twitter-scraper"
+	toml "github.com/pelletier/go-toml"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func SendTweet(from string, to []string, message string, tweet *twitterscraper.TweetResult) {
+func SendTweet(
+	server string,
+	from string,
+	to []string,
+	message string,
+	tweet *twitterscraper.TweetResult,
+) {
 	subject := fmt.Sprintf("New Tweet from %s", tweet.Username)
 
-	smtpServer := "localhost:25"
+	body := fmt.Sprintf(
+		"To: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s",
+		strings.Join(to, ", "),
+		subject,
+		message,
+	)
 
-	body := fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s", strings.Join(to, ", "), subject, message)
-
-	err := smtp.SendMail(smtpServer, nil, from, to, []byte(body))
+	err := smtp.SendMail(server, nil, from, to, []byte(body))
 	if err != nil {
 		panic(err)
 	}
@@ -51,9 +62,19 @@ func main() {
 		panic(err)
 	}
 
+	mailHost := config.Get("main.mail_server")
+	var mailServer string
+	if mailHost == nil {
+		mailServer = "localhost"
+	} else {
+		mailServer = mailHost.(string)
+	}
+	mailServer += ":25"
+
 	mailFrom := config.Get("main.mailfrom").(string)
 	mailTo := config.GetArray("main.mailto").([]string)
 
+	// fmt.Println(mailServer)
 	// fmt.Println(mailFrom)
 	// fmt.Println(mailTo)
 
@@ -107,11 +128,18 @@ func main() {
 			panic(tweet.Error)
 		}
 
-		msgText := fmt.Sprintf("%s <%s> %s", tweet.TimeParsed.Local().Format(time.RFC1123), tweet.Username, tweet.Text)
+		msgText := fmt.Sprintf(
+			"%s <%s> %s",
+			tweet.TimeParsed.Local().Format(time.RFC1123),
+			tweet.Username,
+			tweet.Text,
+		)
+		msgText = html.UnescapeString(msgText)
+		fmt.Println(msgText)
 
 		tweetExists, _ := db.Has([]byte(tweet.ID), nil)
 		if !tweetExists {
-			SendTweet(mailFrom, mailTo, msgText, tweet)
+			SendTweet(mailServer, mailFrom, mailTo, msgText, tweet)
 			err = db.Put([]byte(tweet.ID), []byte(msgText), nil)
 		}
 	}
