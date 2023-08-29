@@ -12,11 +12,11 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
-func SendTweet(from string, to []string, tweet *twitterscraper.TweetResult) {
+func SendTweet(from string, to []string, message string, tweet *twitterscraper.TweetResult) {
 	subject := fmt.Sprintf("New Tweet from %s", tweet.Username)
-	message := tweet.Text
 
 	smtpServer := "localhost:25"
 
@@ -107,10 +107,12 @@ func main() {
 			panic(tweet.Error)
 		}
 
+		msgText := fmt.Sprintf("%s <%s> %s", tweet.TimeParsed.Local().Format(time.RFC1123), tweet.Username, tweet.Text)
+
 		tweetExists, _ := db.Has([]byte(tweet.ID), nil)
 		if !tweetExists {
-			SendTweet(mailFrom, mailTo, tweet)
-			err = db.Put([]byte(tweet.ID), []byte(tweet.Text), nil)
+			SendTweet(mailFrom, mailTo, msgText, tweet)
+			err = db.Put([]byte(tweet.ID), []byte(msgText), nil)
 		}
 	}
 
