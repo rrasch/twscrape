@@ -135,7 +135,7 @@ func main() {
 			tweet.Text,
 		)
 		msgText = html.UnescapeString(msgText)
-		fmt.Println(msgText)
+		// fmt.Println(msgText)
 
 		tweetExists, _ := db.Has([]byte(tweet.ID), nil)
 		if !tweetExists {
