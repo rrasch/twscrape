@@ -128,11 +128,14 @@ func main() {
 			panic(tweet.Error)
 		}
 
+		// fmt.Printf("%+v\n", tweet)
+
 		msgText := fmt.Sprintf(
-			"%s <%s> %s",
+			"%s <%s> %s\n%s",
 			tweet.TimeParsed.Local().Format(time.RFC1123),
 			tweet.Username,
 			tweet.Text,
+			tweet.PermanentURL,
 		)
 		msgText = html.UnescapeString(msgText)
 		// fmt.Println(msgText)
