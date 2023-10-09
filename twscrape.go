@@ -3,7 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
+	twitterscraper "github.com/n0madic/twitter-scraper"
+	toml "github.com/pelletier/go-toml"
+	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 	"html"
 	"net/http"
 	"net/smtp"
@@ -11,10 +17,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	twitterscraper "github.com/n0madic/twitter-scraper"
-	toml "github.com/pelletier/go-toml"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 func SendTweet(
@@ -44,12 +46,33 @@ func usage() {
 }
 
 func main() {
-	if len(os.Args[1:]) != 1 {
+	debug := flag.Bool("debug", false, "enable debugging")
+	flag.Parse()
+
+	var level logrus.Level
+	if *debug {
+		level = logrus.DebugLevel
+	} else {
+		level = logrus.InfoLevel
+	}
+
+	if flag.NArg() != 1 {
 		usage()
 		os.Exit(1)
 	}
 
-	twitterHandle := os.Args[1]
+	logger := &logrus.Logger{
+		Out:   os.Stderr,
+		Level: level,
+		Formatter: &prefixed.TextFormatter{
+			DisableColors:   true,
+			TimestampFormat: "2006-01-02 15:04:05",
+			FullTimestamp:   true,
+			ForceFormatting: true,
+		},
+	}
+
+	twitterHandle := flag.Arg(0)
 
 	dirname, err := os.UserHomeDir()
 	if err != nil {
@@ -74,15 +97,15 @@ func main() {
 	mailFrom := config.Get("main.mailfrom").(string)
 	mailTo := config.GetArray("main.mailto").([]string)
 
-	// fmt.Println(mailServer)
-	// fmt.Println(mailFrom)
-	// fmt.Println(mailTo)
+	logger.Debug("mail server: ", mailServer)
+	logger.Debug("mail from: ", mailFrom)
+	logger.Debug("mail to: ", mailTo)
 
 	twitterUser := config.Get("twitter.username").(string)
 	twitterPass := config.Get("twitter.password").(string)
 
 	dbPath := path.Join(dirname, "logs", "tweet.ldb")
-	// fmt.Println(dbPath)
+	logger.Debug("db path: ", dbPath)
 
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
@@ -90,18 +113,14 @@ func main() {
 	}
 	defer db.Close()
 
-	/*
-	   iter := db.NewIterator(nil, nil)
-	   for iter.Next() {
-	       // Remember that the contents of the returned slice should not be modified, and
-	       // only valid until the next call to Next.
-	       key := iter.Key()
-	       value := iter.Value()
-	       fmt.Println(string(key))
-	       fmt.Println(string(value))
-	   }
-	   iter.Release()
-	*/
+	iter := db.NewIterator(nil, nil)
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+		logger.Debug("key: ", string(key))
+		logger.Debug("value: ", string(value))
+	}
+	iter.Release()
 
 	scraper := twitterscraper.New()
 
@@ -128,7 +147,7 @@ func main() {
 			panic(tweet.Error)
 		}
 
-		// fmt.Printf("%+v\n", tweet)
+		logger.Debugf("tweet: %+v\n", tweet)
 
 		msgText := fmt.Sprintf(
 			"%s <%s> %s\n%s",
@@ -138,7 +157,7 @@ func main() {
 			tweet.PermanentURL,
 		)
 		msgText = html.UnescapeString(msgText)
-		// fmt.Println(msgText)
+		logger.Debug("msg text: ", msgText)
 
 		tweetExists, _ := db.Has([]byte(tweet.ID), nil)
 		if !tweetExists {
