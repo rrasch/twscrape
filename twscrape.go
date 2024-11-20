@@ -169,7 +169,6 @@ func main() {
 		log.Debug("value: ", string(value))
 	}
 	iter.Release()
-	os.Exit(0)
 
 	jsonCookiesPath := path.Join(homedir, ".twcookies.json")
 	netscapeCookiesPath := path.Join(homedir, "Downloads", "x.com_cookies.txt")
